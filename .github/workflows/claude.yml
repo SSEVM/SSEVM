@@ -1,0 +1,62 @@
+name: Builder (Claude Code)
+
+# The SSEVM Architect opens an issue or comments with "@claude" -> this job
+# wakes Claude Code on a GitHub runner, which builds the task on a branch, runs
+# tools/privacy-check.sh, and opens a pull request. IT NEVER MERGES: the
+# Architect reviews and merges.
+#
+# Inert until the repository (or the SSEVM organisation) has the secret
+# CLAUDE_CODE_OAUTH_TOKEN; without it the action step fails at once and
+# Claude is not run.
+#
+# THREE GUARDS, all required (same as the other projects' builders):
+#   1. No bots: the builder's own replies cannot start another run.
+#   2. Sender must be the owner's account (AAAsapp).
+#   3. "@claude" in the text of the event that fired.
+# author_association is deliberately NOT a guard: GitHub reports private org
+# members as CONTRIBUTOR or NONE, which would lock the owner out.
+
+on:
+  issues:
+    types: [opened, assigned]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: ssevm-builder
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: |
+      github.event.sender.type != 'Bot' &&
+      github.event.sender.login == 'AAAsapp' &&
+      (
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))) ||
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --max-turns 150
+            --allowedTools "Bash(bash tools/privacy-check.sh),Bash(node *),Bash(git *),Bash(gh pr *),Bash(gh issue *),Read,Edit,Write,Glob,Grep"
