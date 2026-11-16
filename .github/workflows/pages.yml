@@ -1,0 +1,37 @@
+name: Publish pages
+# Free, no Claude (owner ticked SSEVM J04 C5, 16 Nov 2026): every merge to main
+# is put online at https://ssevm.github.io/SSEVM/ after the privacy check.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - run: bash tools/privacy-check.sh
+      - run: python3 tools/page-check.py
+      - name: Build the site (public pages only)
+        run: |
+          mkdir -p _site
+          git ls-files '*.html' | while read -r f; do mkdir -p "_site/$(dirname "$f")"; cp "$f" "_site/$f"; done
+          printf '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=plan/concept-plan.html"><title>SSEVM</title><a href="plan/concept-plan.html">SSEVM Village Concept Plan</a>\n' > _site/index.html
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

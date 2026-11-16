@@ -1,0 +1,16 @@
+name: Page checks
+# Free, no Claude (owner ticked SSEVM J04 C1-C4, 16 Nov 2026).
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 21 * * 0"   # links once a week (Monday ~8 am Sydney)
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Title, phone, no keys or tracking, planning-range note (C1, C2, C4)
+        run: python3 tools/page-check.py
+      - name: Links open, incl. the MSA Health link (C3)
+        run: python3 tools/link-check.py
