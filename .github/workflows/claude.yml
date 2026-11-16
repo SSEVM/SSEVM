@@ -13,6 +13,8 @@ name: Builder (Claude Code)
 #   1. No bots: the builder's own replies cannot start another run.
 #   2. Sender must be the owner's account (AAAsapp).
 #   3. "@claude" in the text of the event that fired.
+# COST (owner, PCA J116, 16 Nov): Sonnet model, at most 80 turns, and no
+# automatic runs: it only wakes when the owner writes "@claude".
 # author_association is deliberately NOT a guard: GitHub reports private org
 # members as CONTRIBUTOR or NONE, which would lock the owner out.
 
@@ -58,5 +60,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
-            --max-turns 150
+            --model claude-sonnet-5-5
+            --max-turns 80
             --allowedTools "Bash(bash tools/privacy-check.sh),Bash(node *),Bash(git *),Bash(gh pr *),Bash(gh issue *),Read,Edit,Write,Glob,Grep"
